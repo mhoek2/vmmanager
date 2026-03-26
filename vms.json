@@ -1,0 +1,16 @@
+{
+  "vms": [
+    {
+      "name": "ubuntu",
+      "path": "C:\\VMs\\Ubuntu\\Ubuntu.vmx"
+    },
+    {
+      "name": "win10",
+      "path": "C:\\VMs\\Win10\\Win10.vmx"
+    },
+    {
+      "name": "mv",
+      "path": "C:\\Users\\Marco\\Documents\\Virtual Machines\\mv\\mv.vmx"
+    }
+  ]
+}
