@@ -35,10 +35,10 @@ class VMWareManager:
                 data['messages'].append("vmware cannot be accessed, missing in system PATH?")
 
             for name, path in vms.items():
-                if running:
-                    status = "running" if path in running else "stopped"
+                if running is not False:
+                    status = "aan" if path in running else "gestopt"
                 else:
-                    status = "no connection"
+                    status = "vmware fout"
 
                 data['list'].append({"name": name, "status": status})
             
@@ -91,7 +91,7 @@ class VMWareManager:
             result = self.vm_api.start_vm( path )
 
             if not result:
-                return jsonify({"status": False, "message": "vmware cannot be accessed, missing in system PATH?"})
+                return jsonify({"status": False, "message": "vmware [vmrun] cannot be accessed"})
 
             return jsonify({"status": True})
         
@@ -102,13 +102,12 @@ class VMWareManager:
             name = request.json.get("name")
             path = vms.get( name )
         
-            print(path)
             if not path:
                 return jsonify({"error": "not found"}), 404
         
             result = self.vm_api.stop_vm( path )
             if not result:
-                return jsonify({"status": False, "message": "vmware cannot be accessed, missing in system PATH?"})
+                return jsonify({"status": False, "message": "vmware [vmrun] cannot be accessed"})
 
             return jsonify({"status": True})
 
