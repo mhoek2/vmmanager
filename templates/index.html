@@ -102,7 +102,7 @@
 
                     const td_actions = document.createElement('td');
                     const btn_start_stop = document.createElement('button');
-                    if (vm.status === 'running') {
+                    if (vm.status === 'aan') {
                         btn_start_stop.textContent = 'Stop';
                         btn_start_stop.setAttribute('aria-label', 'Stop VM ' + vm.name);
                         btn_start_stop.onclick = () => vm_stop(vm.name);
@@ -136,8 +136,10 @@
                 announce("VM lijst is geupdate");
         }
 
-        async function vm_send_action(name, url, success, fail) {
+        async function vm_send_action(name, url, message, fail) {
             try {
+                announce(message);
+
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -147,12 +149,13 @@
                 const data = await res.json();
 
                 if (res.ok && data.status) {
-                    announce(success);
+                    //announce(message);
                 } else {
                     announce(fail + ": " + (data.message || data.error || "Onbekende fout"));
                 }
 
-                fetch_vms();
+                // deprecated: rely on polling
+                //fetch_vms();
             } catch (err) {
                 announce(fail + ": netwerkfout " + err);
             }
@@ -168,10 +171,12 @@
         }
 
         async function vm_stop(name) {
+            announce(name + " wordt gestopt, even geduld");
+
             vm_send_action(
                 name,
                 '/stop',
-                name + " wordt gestopt",
+                name + " is gestopt",
                 name + " kon niet stoppen"
             );
         }
@@ -180,7 +185,7 @@
             vm_send_action(
                 name,
                 '/start',
-                name + " is gestart",
+                name + " wordt gestart",
                 name + " kon niet starten"
             );
         }

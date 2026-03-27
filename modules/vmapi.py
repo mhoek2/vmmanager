@@ -96,20 +96,37 @@ class VM_API:
            print(e)
            return False
 
-    def stop_vm( self, path ):
-        print(path)
-        try:
-            result = subprocess.run(
-                [self.vmrun, "stop", path, "soft" ], 
+    def stop_vm_subprocesses( self, path : str, method : str ):
+        return subprocess.run(
+                [self.vmrun, "stop", path, method ], 
                 capture_output=True, 
                 text=True,
+                timeout=15,
                 creationflags=0x08000000 # No console
             )
 
+    def stop_vm( self, path ):
+        try:
+            result = self.stop_vm_subprocesses( path, "soft" )
+
+            if result.returncode != 0:
+                print("Soft stop failed:", result.stderr)
+        
+            else:
+                return True
+
+        except subprocess.TimeoutExpired:
+            print("soft stop timed out, try hard stop")
+
+        # timeout.. go ahead and hard stop the vm
+        try:
+            print("go for hard stop")
+            result = self.stop_vm_subprocesses( path, "hard" )
 
             if result.returncode != 0:
                 print("Error:", result.stderr)
                 return False
+
             return True
 
         except Exception as e:
