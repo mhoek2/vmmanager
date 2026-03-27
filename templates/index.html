@@ -6,28 +6,36 @@
 </head>
 <body>
 
-    <h1>VM Manager</h1>
+    <div id="main_container" role="main">
+        <h1>VM Manager</h1>
 
-    <table border="1">
-        <thead>
-            <tr>
-                <th>VM Name</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="vmTable">
-            <!-- Filled by JS -->
-        </tbody>
-    </table>
+        <section aria-labelledby="vm_list_title">
+            <h2 id="vm_list_title">Lijst met Virtual Machines</h2>
 
-    <div>
-        <label for="add_vm_path">VMX File Path:</label>
-        <input type="text" id="add_vm_path" placeholder="C:\VMs\myvm.vmx" aria-required="true">
-        <button id="add_vm_button">Add VM</button>
+            <table border="1" aria-label="Lijst met Virtual Machines met status en acties">
+                <thead>
+                    <tr>
+                        <th scope="col">VM Name</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="vms"></tbody>
+            </table>
+
+            <button onclick="fetch_vms( true )" type="button" aria-controls="vms">Ververs lijst</button>
+        </section>
+
+        <section role="region" aria-labelledby="add_vm_title">
+            <h2 id="add_vm_title">VM toevoegen aan lijst</h2>
+
+            <label for="add_vm_path">Pad naar VMX-bestand</label>
+            <input type="text" id="add_vm_path" placeholder="C:\vms\vm.vmx" aria-required="true">
+            <button id="add_vm_button" type="button">VM Toevoegen</button>
+        </section>
+
+        <div role="status" aria-live="polite" aria-atomic="true" id="status"></div>
     </div>
-
-    <div aria-live="polite" id="status"></div>
 
     <script>
         const fetch_vms_interval = 3000;
@@ -39,40 +47,50 @@
             status.textContent = msg;
         }
 
-        async function fetchVMs() {
+        async function fetch_vms(manual_refresh = false) {
             const res = await fetch('/vms');
             const data = await res.json();
             const vms = data.list;
 
-            const table = document.getElementById('vmTable');
+            const table = document.getElementById('vms');
 
             // Track existing rows by VM name
-            const existingRows = {};
+            const current_vms = {};
             Array.from(table.rows).forEach(row => {
                 const name = row.cells[0].textContent;
-                existingRows[name] = row;
+                current_vms[name] = row;
             });
 
             // Update or add rows
             vms.forEach(vm => {
-                if (existingRows[vm.name]) {
+                if (current_vms[vm.name]) {
                     // VM already exists, just update status and button
-                    const row = existingRows[vm.name];
+                    const row = current_vms[vm.name];
+
+                    // status
+                    if (row.cells[1].textContent !== vm.status) {
+                        announce(vm.name + " status is gewijzigd naar " + vm.status);
+                    }
                     row.cells[1].textContent = vm.status;
 
+                    // action button
                     const btn = row.cells[2].querySelector('button');
                     if (vm.status === 'running') {
                         btn.textContent = 'Stop';
-                        btn.setAttribute('aria-label', 'Stop ' + vm.name);
+                        btn.setAttribute('aria-label', 'Stop VM ' + vm.name);
+                        btn.setAttribute('type', 'button');
                         btn.onclick = () => vm_stop(vm.name);
                     } else {
                         btn.textContent = 'Start';
-                        btn.setAttribute('aria-label', 'Start ' + vm.name);
+                        btn.setAttribute('aria-label', 'Start VM ' + vm.name);
+                        btn.setAttribute('type', 'button');
                         btn.onclick = () => vm_start(vm.name);
                     }
 
-                    delete existingRows[vm.name]; // mark as handled
-                } else {
+                    delete current_vms[vm.name]; // mark as handled
+                }
+
+                else {
                     // VM is new, create a new row
                     const row = document.createElement('tr');
 
@@ -86,17 +104,18 @@
                     const btn_start_stop = document.createElement('button');
                     if (vm.status === 'running') {
                         btn_start_stop.textContent = 'Stop';
-                        btn_start_stop.setAttribute('aria-label', 'Stop ' + vm.name);
+                        btn_start_stop.setAttribute('aria-label', 'Stop VM ' + vm.name);
                         btn_start_stop.onclick = () => vm_stop(vm.name);
                     } else {
                         btn_start_stop.textContent = 'Start';
-                        btn_start_stop.setAttribute('aria-label', 'Start ' + vm.name);
+                        btn_start_stop.setAttribute('aria-label', 'Start VM ' + vm.name);
                         btn_start_stop.onclick = () => vm_start(vm.name);
                     }
 
                     const btn_remove = document.createElement('button');
                     btn_remove.textContent = 'Verwijder';
-                    btn_remove.setAttribute('aria-label', 'Verwijder ' + vm.name);
+                    btn_remove.setAttribute('aria-label', 'Verwijder VM ' + vm.name + ' uit de lijst');
+                    btn_remove.setAttribute('type', 'button');
                     btn_remove.onclick = () => vm_remove(vm.name);
 
                     td_actions.appendChild(btn_start_stop);
@@ -111,7 +130,10 @@
             });
 
             // Remove rows that no longer exist
-            Object.values(existingRows).forEach(row => row.remove());
+            Object.values(current_vms).forEach(row => row.remove());
+
+            if (manual_refresh)
+                announce("VM lijst is geupdate");
         }
 
         async function vm_send_action(name, url, success, fail) {
@@ -130,18 +152,17 @@
                     announce(fail + ": " + (data.message || data.error || "Onbekende fout"));
                 }
 
-                fetchVMs();
+                fetch_vms();
             } catch (err) {
                 announce(fail + ": netwerkfout " + err);
             }
         }
 
-
         async function vm_remove(name) {
             vm_send_action(
                 name,
                 '/remove',
-                name + " is verwijdert",
+                name + " wordt verwijdert",
                 name + " kon niet verwijderen"
             );
         }
@@ -150,7 +171,7 @@
             vm_send_action(
                 name,
                 '/stop',
-                name + " is gestopt",
+                name + " wordt gestopt",
                 name + " kon niet stoppen"
             );
         }
@@ -167,7 +188,7 @@
         add_vm_button.onclick = async () => {
             const path = add_vm_path.value.trim();
             if (!path) {
-                announce("Please enter a VMX file path");
+                announce("Voer een VMX-bestandspad in");
                 return;
             }
 
@@ -183,25 +204,24 @@
 
                 const data = await res.json();
                 if (res.ok && data.status) {
-                    announce("VM added: " + name);
+                    announce(name + " is toegevoegd");
                     add_vm_path.value = ""; // clear input
-                    fetchVMs(); // refresh table
+                    fetch_vms(); // refresh table
                 } else {
-                    announce("Error: " + (data.error || "Failed to add VM"));
+                    announce("Error: " + (data.error || " Toevoegen is mislukt"));
                 }
             } catch (err) {
-                announce("Network error: " + err);
+                announce("Network fout: " + err);
             }
         };
 
-        async function fetchVMsLoop() {
-            await fetchVMs();
+        async function fetch_vmsLoop() {
+            await fetch_vms();
 
-            setInterval(fetchVMs, fetch_vms_interval);
+            setInterval(fetch_vms, fetch_vms_interval);
         }
 
-        fetchVMsLoop();
+        fetch_vmsLoop();
     </script>
-
 </body>
 </html>
