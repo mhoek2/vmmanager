@@ -22,10 +22,11 @@ class VMWareManager:
         def index():
             return render_template("index.html")
 
-        @self.app.route("/vms", methods=["GET"])
-        def list_vms():
-            vms = self.vm_api.load_vms()
+        @self.app.route("/inventory", methods=["GET"])
+        def inventory_vms():
+            vms = self.vm_api.load_inventory_vms()
             running = self.vm_api.get_running_vms()
+
             data = {
                 'messages'  : [], 
                 'list'      : [],
@@ -37,6 +38,45 @@ class VMWareManager:
             for name, path in vms.items():
                 if running is not False:
                     status = "aan" if path in running else "gestopt"
+                else:
+                    status = "vmware fout"
+
+                data['list'].append({"name": name, "status": status})
+
+            return jsonify(data)
+
+
+        @self.app.route("/import_vms", methods=["GET"])
+        def import_vms():
+            added, existing = self.vm_api.import_inventory()
+
+            data = {
+                'added'     : added, 
+                'existing'  : existing,
+                'status'    : True
+            }
+
+            return jsonify(data)
+
+        @self.app.route("/vms", methods=["GET"])
+        def list_vms():
+            vms = self.vm_api.load_vms()
+            running = self.vm_api.get_running_vms()
+            data = {
+                'messages'  : [], 
+                'list'      : []
+            }
+
+            if running is False:
+                data['messages'].append("vmware cannot be accessed, missing in system PATH?")
+
+            for name, path in vms.items():
+                if running is not False:
+                    status = "aan" if path in running else "gestopt"
+
+                    if not os.path.exists( path ):
+                        status = "vmx onbekend"
+
                 else:
                     status = "vmware fout"
 
