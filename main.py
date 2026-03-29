@@ -1,5 +1,6 @@
 import os
 import threading
+import socket
 from flask import Flask, jsonify, request, render_template
 
 from modules.vmapi import VM_API
@@ -7,6 +8,7 @@ from modules.tray import Tray
 
 class VMWareManager:
     def __init__( self ) -> None:
+        self.http_port = 5000
         self.app = Flask(__name__)
         self.register_routes()
 
@@ -153,14 +155,28 @@ class VMWareManager:
 
     # server
     def run_flask( self ):
-        http_port = 5000
-        print( f"Webserver starting on port {http_port}" )
-        self.app.run( port = http_port )
- 
+        print( f"Webserver starting on port {self.http_port}" )
+        self.app.run( port = self.http_port )        
+
+    def open_browser_when_flask_active(self):
+        import webbrowser
+        
+        while True:
+            try:
+                with socket.create_connection(("127.0.0.1", self.http_port), timeout=1):
+                    break
+            except OSError:
+                time.sleep(0.1)
+
+        webbrowser.open(f"http://localhost:{self.http_port}")
+
     def run( self ) -> None: 
         flask_thread = threading.Thread(target=self.run_flask, daemon=True)
         flask_thread.start()
 
+        # open browser when flask webserver is active
+        threading.Thread(target=self.open_browser_when_flask_active).start()
+        
         self.tray.run()
 
 
