@@ -16,3 +16,6 @@ A **Python** application serving a basic web-based page allowing to control the 
 5. The web-page is updating the table periodicly (3 seconds)
 6. Each virtual machine has a **"Start"** button, if it is running it is replaced with **"Stop"**
 7. The "Remove" button only removes the virtual machine from the table, it will not destroy it.
+
+
+<img width="1920" height="1080" alt="preview" src="https://github.com/user-attachments/assets/f78028c7-5091-4d79-9255-6384ff7319f2" />
