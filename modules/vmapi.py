@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 import json
 import os
+import re
 import sys
 
 import subprocess
@@ -57,7 +58,54 @@ class VM_API:
            print(e)
            return False
 
+    def load_inventory_vms( self ):
+        """Try to load the inventory from VMmware"""
+        vms = {}
+
+        appdata = os.getenv( "APPDATA" )
+        if not appdata:
+            return vms
+
+        inv_path = os.path.join( appdata, "VMware", "inventory.vmls" )
+
+        if not os.path.exists( inv_path ):
+            return vms
+
+        with open( inv_path, "r", encoding="utf-8", errors="ignore" ) as f:
+            content = f.read()
+
+        # find all .vmx paths
+        matches = re.findall( r'"(.*?\.vmx)"', content, re.IGNORECASE )
+
+        normalizd_paths = set()
+
+        for path in matches:
+            path_n = os.path.normcase( os.path.normpath( path ) )
+
+            if not os.path.exists( path ):
+                continue
+
+            # unique path
+            if path_n in normalizd_paths:
+                continue
+
+            normalizd_paths.add( path_n )
+
+            base_name = os.path.splitext(os.path.basename(path))[0]
+            name = base_name
+            counter = 1
+
+            # unique name
+            while name in vms:
+                name = f"{base_name} ({counter})"
+                counter += 1
+
+            vms[name] = path
+
+        return vms
+
     def load_vms( self ):
+        """Load vms from local tracked JSON file"""
         if not os.path.exists( self.VMS_FILE ):
             return {}
 
@@ -67,6 +115,7 @@ class VM_API:
         return {vm["name"]: vm["path"] for vm in data.get("vms", [])}
 
     def save_vms( self, vm_dict ):
+        """Save vms to local tracked JSON file"""
         data = {
             "vms": [
                 {"name": name, "path": path}
@@ -76,6 +125,25 @@ class VM_API:
 
         with open( self.VMS_FILE, "w" ) as f:
             json.dump(data, f, indent=2)
+
+    def import_inventory( self ):
+        """Try to merge VMware's invertory with local tracked JSON file"""
+        auto = self.load_inventory_vms()
+        local = self.load_vms()
+
+        added = 0
+        existing = 0
+
+        for name, path in auto.items():
+            if name not in local:
+                local[name] = path
+                added += 1
+            else:
+                existing += 1
+
+        self.save_vms( local )
+
+        return added, existing
 
     def start_vm( self, path ):
         try:

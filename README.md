@@ -1,6 +1,5 @@
 # VM Manager
-A **Python** application serving a basic web-based allowing the user to control the power-state
-of virtual machines hosted through **VMware Workstation**
+A **Python** application serving a basic web-based page allowing to control the power-state of virtual machines hosted through **VMware Workstation**
 
 ## :fire: Installation (Windows)
 1. Download the [Release or Beta](https://github.com/mhoek2/vmmanager/releases) here.
@@ -19,7 +18,4 @@ of virtual machines hosted through **VMware Workstation**
 7. The "Remove" button only removes the virtual machine from the table, it will not destroy it.
 
 
->	The Application ships with a demo vm listed called: **"mv"**, remove this vm.
-
 <img width="1920" height="1080" alt="preview" src="https://github.com/user-attachments/assets/f78028c7-5091-4d79-9255-6384ff7319f2" />
-

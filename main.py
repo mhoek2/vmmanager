@@ -1,5 +1,6 @@
 import os
 import threading
+import socket
 from flask import Flask, jsonify, request, render_template
 
 from modules.vmapi import VM_API
@@ -7,6 +8,7 @@ from modules.tray import Tray
 
 class VMWareManager:
     def __init__( self ) -> None:
+        self.http_port = 5000
         self.app = Flask(__name__)
         self.register_routes()
 
@@ -22,10 +24,11 @@ class VMWareManager:
         def index():
             return render_template("index.html")
 
-        @self.app.route("/vms", methods=["GET"])
-        def list_vms():
-            vms = self.vm_api.load_vms()
+        @self.app.route("/inventory", methods=["GET"])
+        def inventory_vms():
+            vms = self.vm_api.load_inventory_vms()
             running = self.vm_api.get_running_vms()
+
             data = {
                 'messages'  : [], 
                 'list'      : [],
@@ -37,6 +40,45 @@ class VMWareManager:
             for name, path in vms.items():
                 if running is not False:
                     status = "aan" if path in running else "gestopt"
+                else:
+                    status = "vmware fout"
+
+                data['list'].append({"name": name, "status": status})
+
+            return jsonify(data)
+
+
+        @self.app.route("/import_vms", methods=["GET"])
+        def import_vms():
+            added, existing = self.vm_api.import_inventory()
+
+            data = {
+                'added'     : added, 
+                'existing'  : existing,
+                'status'    : True
+            }
+
+            return jsonify(data)
+
+        @self.app.route("/vms", methods=["GET"])
+        def list_vms():
+            vms = self.vm_api.load_vms()
+            running = self.vm_api.get_running_vms()
+            data = {
+                'messages'  : [], 
+                'list'      : []
+            }
+
+            if running is False:
+                data['messages'].append("vmware cannot be accessed, missing in system PATH?")
+
+            for name, path in vms.items():
+                if running is not False:
+                    status = "aan" if path in running else "gestopt"
+
+                    if not os.path.exists( path ):
+                        status = "vmx onbekend"
+
                 else:
                     status = "vmware fout"
 
@@ -113,14 +155,28 @@ class VMWareManager:
 
     # server
     def run_flask( self ):
-        http_port = 5000
-        print( f"Webserver starting on port {http_port}" )
-        self.app.run( port = http_port )
- 
+        print( f"Webserver starting on port {self.http_port}" )
+        self.app.run( port = self.http_port )        
+
+    def open_browser_when_flask_active(self):
+        import webbrowser
+        
+        while True:
+            try:
+                with socket.create_connection(("127.0.0.1", self.http_port), timeout=1):
+                    break
+            except OSError:
+                time.sleep(0.1)
+
+        webbrowser.open(f"http://localhost:{self.http_port}")
+
     def run( self ) -> None: 
         flask_thread = threading.Thread(target=self.run_flask, daemon=True)
         flask_thread.start()
 
+        # open browser when flask webserver is active
+        threading.Thread(target=self.open_browser_when_flask_active).start()
+        
         self.tray.run()
 
 

@@ -195,7 +195,8 @@
                 color: #f56969;
             }
 
-            button.vm_refresh_button {
+            button.vm_refresh_button,
+            button.vm_import_button {
                 padding: 0.5em 1.0em;
                 margin-top: 1em;
             }
@@ -295,12 +296,14 @@
                 </thead>
                 <tbody id="vms"></tbody>
             </table>
-
+            <!--
             <button class="vm_refresh_button orange" type="button" aria-controls="vms" onclick="fetch_vms( true )">Ververs lijst</button>
+            -->
+            <button class="vm_import_button blue" type="button" aria-controls="vms" onclick="import_vms( true )">Importeren uit VMware</button>
         </section>
 
         <section role="region" aria-labelledby="add_vm_title" class="add_vm_container">
-            <h2 id="add_vm_title">VM toevoegen aan lijst</h2>
+            <h2 id="add_vm_title">VM handmatig toevoegen</h2>
 
             <form class="form_content">
                 <label for="add_vm_path">Pad naar VMX-bestand</label>
@@ -320,6 +323,8 @@
         const fetch_vms_interval = 3000;
         const add_vm_path = document.getElementById('add_vm_path');
         const add_vm_button = document.getElementById('add_vm_button');
+
+        let disable_vm_send_action = false;
 
         function announce(msg) {
             const status = document.getElementById('status');
@@ -419,8 +424,50 @@
                 announce("VM lijst is geupdate");
         }
 
-        async function vm_send_action(name, url, message, fail) {
+        async function import_vms() {
+            const fail = "Kon niet importeren";
+
             try {
+                const res = await fetch( '/import_vms', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.status) {
+                    fetch_vms();
+
+                    if (data.existing == 0){
+                        announce(data.added + " toegevoegd");
+                        return;
+                    }
+
+                    if (data.added == 0){
+                        announce(data.existing + " bestond al");
+                        return;
+                    }
+
+                    announce( data.added + " toegevoegd, " + data.existing + " bestond al" );
+                } else {
+                    announce(fail + ": " + (data.message || data.error || "Onbekende fout"));
+                }
+
+                // deprecated: rely on polling
+                //fetch_vms();
+            } catch (err) {
+                announce(fail + ": netwerkfout " + err);
+            }
+        }
+
+        async function vm_send_action(name, url, message, fail) {
+            if ( disable_vm_send_action ) {
+                console.log('A action is already pending');
+                return;
+            }
+
+            try {
+                disable_vm_send_action = true;
                 announce(message);
 
                 const res = await fetch(url, {
@@ -437,20 +484,23 @@
                     announce(fail + ": " + (data.message || data.error || "Onbekende fout"));
                 }
 
-                // deprecated: rely on polling
-                //fetch_vms();
+                disable_vm_send_action = false;
             } catch (err) {
                 announce(fail + ": netwerkfout " + err);
+                disable_vm_send_action = false;
             }
         }
 
         async function vm_remove(name) {
-            vm_send_action(
-                name,
-                '/remove',
-                name + " wordt verwijdert",
-                name + " kon niet verwijderen"
-            );
+            if (confirm("Bevestig dat VM " + name + " uit de lijst wordt verwijdert"))
+            {
+                vm_send_action(
+                    name,
+                    '/remove',
+                    name + " wordt verwijdert",
+                    name + " kon niet verwijderen"
+                );
+            }
         }
 
         async function vm_stop(name) {
