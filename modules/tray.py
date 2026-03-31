@@ -25,8 +25,8 @@ class Tray:
 
     def resource_path( self, filename ):
         """Get path to resource, works for dev and PyInstaller exe"""
-        if getattr(sys, 'frozen', False):  # running as compiled exe
-            base_path = os.path.dirname(sys.executable)
+        if hasattr(sys, '_MEIPASS'):
+            base_path = sys._MEIPASS
         else:
             base_path = os.path.abspath(".")
         return os.path.join(base_path, filename)
