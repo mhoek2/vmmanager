@@ -33,8 +33,9 @@ for src, dst in files_to_copy.items():
 # Configuration
 # ------------------------------------------------------
 datas = [
-    ('modules',        'modules'),
-    ('templates',        'templates'),
+    ('modules',         'modules'),
+    ('templates',       'templates'),
+    ('static',          'static'),
 ]
 
 a = Analysis(
@@ -71,5 +72,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-	icon='icon.ico',
+	icon='static/icon.ico',
 )
