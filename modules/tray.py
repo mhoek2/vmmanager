@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING
 
 import pystray
+import os
+import sys
 from pystray import MenuItem as item
 from PIL import Image, ImageDraw
 
@@ -21,12 +23,17 @@ class Tray:
             )
         )
 
-    def create_icon( self ):
-        # simple black square icon
-        image = Image.new('RGB', (64, 64), "black")
-        dc = ImageDraw.Draw(image)
-        dc.rectangle((16, 16, 48, 48), fill="white")
-        return image
+    def resource_path( self, filename ):
+        """Get path to resource, works for dev and PyInstaller exe"""
+        if hasattr(sys, '_MEIPASS'):
+            base_path = sys._MEIPASS
+        else:
+            base_path = os.path.abspath(".")
+        return os.path.join(base_path, filename)
+    
+    def create_icon(self):
+        image = Image.open(self.resource_path("static/icon.ico"))
+        return image.resize((64, 64))
 
     def open_page( self, icon, item):
         import webbrowser
