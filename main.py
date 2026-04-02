@@ -166,23 +166,35 @@ class VMWareManager:
         print( f"Webserver starting on port {self.http_port}" )
         self.app.run( port = self.http_port )        
 
-    def open_browser_when_flask_active(self):
+    def is_flask_running( self ):
+        try:
+            with socket.create_connection(("127.0.0.1", self.http_port), timeout=2):
+                return True
+        except OSError:
+            return False
+
+    def open_browser( self ):
         import webbrowser
-        
-        while True:
-            try:
-                with socket.create_connection(("127.0.0.1", self.http_port), timeout=1):
-                    break
-            except OSError:
-                time.sleep(0.1)
 
         webbrowser.open(f"http://localhost:{self.http_port}")
 
+    def open_browser_when_flask_active( self ):
+        while not self.is_flask_running():
+            time.sleep(0.1)
+
+        self.open_browser()
+
     def run( self ) -> None: 
+        """Start flask and open in a browser, if flask is already running, only open the browser"""
+        if self.is_flask_running():
+            print(f"Already listening on port {self.http_port}, open browser only")
+            self.open_browser()
+            return
+
         flask_thread = threading.Thread(target=self.run_flask, daemon=True)
         flask_thread.start()
 
-        # open browser when flask webserver is active
+        # open browser as soon as flask webserver is active
         threading.Thread(target=self.open_browser_when_flask_active).start()
         
         self.tray.run()
