@@ -18,7 +18,8 @@ class VM_API:
         self.VMS_FILE = self.resource_path("vms.json")
 
         self.vmrun = ""
-
+        self.open_vmware_onstart = False
+        
         self.load_config()
 
     def resource_path( self, filename ):
@@ -29,7 +30,6 @@ class VM_API:
             base_path = os.path.abspath(".")
         return os.path.join(base_path, filename)
 
-
     def load_config( self ):
         if not os.path.exists( self.CONFIG_FILE ):
             return {}
@@ -38,6 +38,7 @@ class VM_API:
             data = json.load(f)
 
         self.vmrun = data.get("vmrun", "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe")
+        self.open_vmware_onstart = data.get("open_vmware_onstart", False)
 
     def get_running_vms( self ):
         try:
@@ -147,8 +148,14 @@ class VM_API:
 
     def start_vm( self, path ):
         try:
+            run_cmd = [self.vmrun, "start", path]
+
+            # open vmware when start is pressed
+            if not self.open_vmware_onstart:
+                run_cmd.append("nogui")
+
             result = subprocess.run(
-                [self.vmrun, "start", path], 
+                run_cmd, 
                 capture_output=True, 
                 text=True,
                 creationflags=0x08000000 # No console                 

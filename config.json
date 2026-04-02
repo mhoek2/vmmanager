@@ -1,3 +1,4 @@
 {
-  "vmrun": "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe"
+  "vmrun": "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe",
+  "open_vmware_onstart": false
 }
