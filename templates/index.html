@@ -33,6 +33,7 @@
                     <tr>
                         <th scope="col">VM Name</th>
                         <th scope="col" width="150">Status</th>
+                        <th scope="col" width="150">IP Adres</th>
                         <th scope="col" width="200">Acties</th>
                     </tr>
                 </thead>
@@ -99,8 +100,13 @@
                     }
                     row.cells[1].textContent = vm.status;
 
+                    // ip address
+                    if (row.cells[2].textContent !== vm.ip_address) {
+                        row.cells[2].textContent = vm.ip_address;
+                    }
+
                     // action button
-                    const btn = row.cells[2].querySelector('button');
+                    const btn = row.cells[3].querySelector('button');
                     if (vm.status === 'aan') {
                         btn.textContent = 'Stop';
                         btn.setAttribute('aria-label', 'Stop VM ' + vm.name);
@@ -128,6 +134,9 @@
                     const td_status = document.createElement('td');
                     td_status.textContent = vm.status;
 
+                    const td_ip_address = document.createElement('td');
+                    td_ip_address.textContent = vm.ip_address;
+
                     const td_actions = document.createElement('td');
                     const btn_start_stop = document.createElement('button');
                     if (vm.status === 'aan') {
@@ -153,6 +162,7 @@
 
                     row.appendChild(td_name);
                     row.appendChild(td_status);
+                    row.appendChild(td_ip_address);
                     row.appendChild(td_actions);
 
                     table.appendChild(row);

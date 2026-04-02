@@ -59,6 +59,22 @@ class VM_API:
            print(e)
            return False
 
+    def get_ip_address( self, path ):
+        result = subprocess.run(
+            [self.vmrun, "getGuestIPAddress", path ], 
+            capture_output=True, 
+            text=True,
+            timeout=5,
+            creationflags=0x08000000 # No console
+        )
+
+        output = result.stdout.lower()
+
+        if "vmware tools" in output and "not running" in output:
+            return "vmware tools missing"
+        
+        return result.stdout.strip()
+
     def load_inventory_vms( self ):
         """Try to load the inventory from VMmware"""
         vms = {}

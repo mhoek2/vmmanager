@@ -80,10 +80,17 @@ class VMWareManager:
                     if not os.path.exists( path ):
                         status = "vmx onbekend"
 
+                    # try to find the IP address:
+                    if path in running:
+                        ip_address = self.vm_api.get_ip_address( path )
+                    else:
+                        ip_address = "x"
+
                 else:
                     status = "vmware fout"
+                    ip_address = "x"
 
-                data['list'].append({"name": name, "status": status})
+                data['list'].append({"name": name, "status": status, "ip_address": ip_address})
             
             return jsonify(data)
 
