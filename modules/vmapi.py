@@ -56,7 +56,7 @@ class VM_API:
             return set(lines[1:])
 
         except Exception as e:
-           print(e)
+           #print(e)
            return False
 
     def get_ip_address( self, path ):

@@ -2,24 +2,95 @@ import os
 import threading
 import socket
 import time
+import random
 from flask import Flask, jsonify, request, render_template
+from flask_socketio import SocketIO, emit
 
 from modules.vmapi import VM_API
 from modules.tray import Tray
 
 class VMWareManager:
     def __init__( self ) -> None:
+        # configurationn
+        self.simulate = False
         self.http_port = 5000
+
+        # flask instance
         self.app = Flask(__name__)
+
+        # flask socketio instance
+        self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+        self.socketio_interval_sec = 4 
+        self.socketio_data = []
+
+        # routes
         self.register_routes()
 
+        # modules
         self.vm_api : VM_API = VM_API( self )
         self.tray : Tray = Tray( self )
 
         print("VMWareManager initialized")
 
+    def random_ip( self ):
+        return ".".join(str(random.randint(1, 255)) for _ in range(4))
+
+    def get_vms( self ):
+        vms = self.vm_api.load_vms()
+        running = self.vm_api.get_running_vms()
+        data = {
+            'messages'  : [], 
+            'list'      : []
+        }
+
+        if running is False:
+            data['messages'].append("vmware cannot be accessed, missing in system PATH?")
+
+        for name, path in vms.items():
+            if running is not False:
+                status = "aan" if path in running else "gestopt"
+
+                if not os.path.exists( path ):
+                    status = "vmx onbekend"
+
+                # try to find the IP address:
+                if path in running:
+                    ip_address = self.vm_api.get_ip_address( path )
+                else:
+                    ip_address = "x"
+
+            else:
+                status = "vmware fout"
+                ip_address = "x"
+
+            data['list'].append({"name": name, "status": status, "ip_address": ip_address})
+            
+        # simulate telemetry data
+        if self.simulate:
+            statuses = ["aan", "gestopt", "fout"]
+
+            for i in range(4):
+                status = random.choice(statuses)
+
+                ip_address = self.random_ip() if status == "aan" else "x"
+
+                data['list'].append({
+                    "name": f"VM {i}",
+                    "status": status,
+                    "ip_address": ip_address
+                })
+
+        return data
+
     # routes
     def register_routes( self ):
+
+        @self.socketio.on("connect")
+        def handle_connect():
+            print("Client connected")
+
+            # send initial data immediately
+            emit("vms_update", self.get_vms())
 
         @self.app.route("/")
         def index():
@@ -63,35 +134,8 @@ class VMWareManager:
 
         @self.app.route("/vms", methods=["GET"])
         def list_vms():
-            vms = self.vm_api.load_vms()
-            running = self.vm_api.get_running_vms()
-            data = {
-                'messages'  : [], 
-                'list'      : []
-            }
+            data = self.get_vms()
 
-            if running is False:
-                data['messages'].append("vmware cannot be accessed, missing in system PATH?")
-
-            for name, path in vms.items():
-                if running is not False:
-                    status = "aan" if path in running else "gestopt"
-
-                    if not os.path.exists( path ):
-                        status = "vmx onbekend"
-
-                    # try to find the IP address:
-                    if path in running:
-                        ip_address = self.vm_api.get_ip_address( path )
-                    else:
-                        ip_address = "x"
-
-                else:
-                    status = "vmware fout"
-                    ip_address = "x"
-
-                data['list'].append({"name": name, "status": status, "ip_address": ip_address})
-            
             return jsonify(data)
 
 
@@ -161,6 +205,17 @@ class VMWareManager:
 
             return jsonify({"status": True})
 
+    # socket
+    def socket_update_loop( self ):
+        while True:
+            data = self.get_vms()
+
+            if self.socketio_data != data:
+                self.socketio.emit("vms_update", data)
+                self.socketio_data = data
+
+            time.sleep( self.socketio_interval_sec )
+
     # server
     def run_flask( self ):
         print( f"Webserver starting on port {self.http_port}" )
@@ -191,19 +246,22 @@ class VMWareManager:
             self.open_browser()
             return
 
+        # flask
         flask_thread = threading.Thread(target=self.run_flask, daemon=True)
         flask_thread.start()
 
+        # socket
+        threading.Thread(target=self.socket_update_loop, daemon=True).start()
+ 
         # open browser as soon as flask webserver is active
         threading.Thread(target=self.open_browser_when_flask_active).start()
         
-        self.tray.run()
+        # add tray icon
+        threading.Thread(target=self.tray.run, daemon=True).start()
 
+        self.socketio.run(self.app, port=self.http_port)
 
 if __name__ == "__main__":
     manager = VMWareManager()
     manager.run()
-
-    #tray = Tray()
-    #run_tray()
 
