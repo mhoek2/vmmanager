@@ -19,7 +19,7 @@ class VMWareManager:
         self.app = Flask(__name__)
 
         # flask socketio instance
-        self.socketio = SocketIO(self.app, cors_allowed_origins="*")
+        self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode="threading",)
         self.socketio_interval_sec = 4 
         self.socketio_data = []
 
@@ -259,7 +259,12 @@ class VMWareManager:
         # add tray icon
         threading.Thread(target=self.tray.run, daemon=True).start()
 
-        self.socketio.run(self.app, port=self.http_port)
+        self.socketio.run(
+            self.app, 
+            port=self.http_port, 
+            host="127.0.0.1",           # allow 'unsafe' for local tray app
+            allow_unsafe_werkzeug=True
+        )
 
 if __name__ == "__main__":
     manager = VMWareManager()
