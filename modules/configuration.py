@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 @dataclass(slots=True)
 class Config:
     http_port               : int       = field( default=5000 )
+    http_use_socketio       : bool      = field( default=True )
     simulate                : bool      = field( default=False )
     vmrun                   : str       = field( default="C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe" )
     open_vmware_onstart     : bool      = field( default=False )
@@ -44,6 +45,7 @@ class Configuration:
     def parse_config( self ):
         """Map this manually for now. use hasattr and setattr later"""
         self.var.http_port              = self.data.get("http_port",            self.var.http_port)
+        self.var.http_use_socketio      = self.data.get("http_use_socketio",    self.var.http_use_socketio)
         self.var.simulate               = self.data.get("simulate",             self.var.simulate)
         self.var.vmrun                  = self.data.get("vmrun",                self.var.vmrun)
         self.var.open_vmware_onstart    = self.data.get("open_vmware_onstart",  self.var.open_vmware_onstart)

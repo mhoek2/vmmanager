@@ -94,7 +94,10 @@ class VMWareManager:
 
         @self.app.route("/")
         def index():
-            return render_template("index.html")
+            return render_template(
+                "index.html",
+                config=self.config.var
+            )
 
         @self.app.route("/inventory", methods=["GET"])
         def inventory_vms():
@@ -207,6 +210,9 @@ class VMWareManager:
 
     # socket
     def socket_update_loop( self ):
+        if not self.config.var.http_use_socketio:
+            return
+
         while True:
             data = self.get_vms()
 
@@ -257,14 +263,15 @@ class VMWareManager:
         threading.Thread(target=self.open_browser_when_flask_active).start()
         
         # add tray icon
-        threading.Thread(target=self.tray.run, daemon=True).start()
+        threading.Thread(target=self.tray.run, daemon=False).start()
 
-        self.socketio.run(
-            self.app, 
-            port=self.config.var.http_port, 
-            host="127.0.0.1",           # allow 'unsafe' for local tray app
-            allow_unsafe_werkzeug=True
-        )
+        if self.config.var.http_use_socketio:
+            self.socketio.run(
+                self.app, 
+                port=self.config.var.http_port, 
+                host="127.0.0.1",           # allow 'unsafe' for local tray app
+                allow_unsafe_werkzeug=True
+            )
 
 if __name__ == "__main__":
     manager = VMWareManager()

@@ -65,6 +65,8 @@
     </footer>
 
     <script>
+        window.APP_CONFIG = {{ config | tojson }};
+        
         const fetch_vms_interval = 3000;
         const add_vm_path = document.getElementById('add_vm_path');
         const add_vm_button = document.getElementById('add_vm_button');
@@ -326,17 +328,22 @@
             });
 
             socket.on("vms_update", (data) => {
-                console.log("VM data:", data);
-
                 render_vms(data);
             });
         }
 
-        // use flask socketio
-        connect_socket();
+        (function () {
+            const config = window.APP_CONFIG || {};
+            //console.log(config);
 
-        // use polling
-        //fetch_vmsLoop();
+            // use flask socketio
+            if ( config.http_use_socketio ?? false )
+                connect_socket();
+
+            // use polling
+            else
+                fetch_vmsLoop();
+        })();
     </script>
 </body>
 </html>
