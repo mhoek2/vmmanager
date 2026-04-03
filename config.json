@@ -1,7 +1,7 @@
 {
   "http_port": 5000,
   "http_use_socketio": true,
-  "simulate": true,
+  "simulate": false,
   "vmrun": "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe",
   "open_vmware_onstart": false
 }
