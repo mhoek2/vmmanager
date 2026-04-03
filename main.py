@@ -214,19 +214,19 @@ class VMWareManager:
             return
 
         while True:
-            data = self.get_vms()
+            try:
+                data = self.get_vms()
 
-            if self.socketio_data != data:
-                self.socketio.emit("vms_update", data)
-                self.socketio_data = data
+                if self.socketio_data != data:
+                    self.socketio.emit("vms_update", data)
+                    self.socketio_data = data
+
+            except Exception as e:
+                print(f"[socket loop error] {e}")
 
             time.sleep( self.socketio_interval_sec )
 
     # server
-    def run_flask( self ):
-        print( f"Webserver starting on port {self.config.var.http_port}" )
-        self.app.run( port = self.config.var.http_port )        
-
     def is_flask_running( self ):
         try:
             with socket.create_connection(("127.0.0.1", self.config.var.http_port), timeout=2):
@@ -252,10 +252,6 @@ class VMWareManager:
             self.open_browser()
             return
 
-        # flask
-        flask_thread = threading.Thread(target=self.run_flask, daemon=True)
-        flask_thread.start()
-
         # socket
         threading.Thread(target=self.socket_update_loop, daemon=True).start()
  
@@ -265,12 +261,19 @@ class VMWareManager:
         # add tray icon
         threading.Thread(target=self.tray.run, daemon=False).start()
 
+        print( f"Webserver starting on port {self.config.var.http_port}" )
+
         if self.config.var.http_use_socketio:
             self.socketio.run(
                 self.app, 
                 port=self.config.var.http_port, 
                 host="127.0.0.1",           # allow 'unsafe' for local tray app
                 allow_unsafe_werkzeug=True
+            )
+        else: 
+            self.app.run(
+                port=self.config.var.http_port,
+                host="127.0.0.1"
             )
 
 if __name__ == "__main__":

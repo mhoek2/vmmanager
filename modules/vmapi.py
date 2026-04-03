@@ -41,28 +41,36 @@ class VM_API:
             return set(lines[1:])
 
         except Exception as e:
-           #print(e)
+           print(f"[get_running_vms error] {e}")
            return False
 
     def get_ip_address( self, path ):
-        result = subprocess.run(
-            [self.config.var.vmrun, "getGuestIPAddress", path ], 
-            capture_output=True, 
-            text=True,
-            timeout=5,
-            creationflags=0x08000000 # No console
-        )
+        try:
+            result = subprocess.run(
+                [self.config.var.vmrun, "getGuestIPAddress", path ], 
+                capture_output=True, 
+                text=True,
+                timeout=5,
+                creationflags=0x08000000 # No console
+            )
 
-        output = result.stdout.lower()
+            output = result.stdout.lower()
 
-        # handle possible response errors
-        if "vmware tools" in output and "not running" in output:
-            return "vmware tools missing"
+            # handle possible response errors
+            if "vmware tools" in output and "not running" in output:
+                return "vmware tools missing"
         
-        if "not powered on" in output:
-            return "x"
+            if "not powered on" in output:
+                return "x"
 
-        return result.stdout.strip()
+            return result.stdout.strip()
+
+        except subprocess.TimeoutExpired:
+            return "timeout"
+
+        except Exception as e:
+            print(f"[get_ip_address error] {e}")
+            return "error"
 
     def load_inventory_vms( self ):
         """Try to load the inventory from VMmware"""
