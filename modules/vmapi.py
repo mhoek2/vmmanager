@@ -12,15 +12,10 @@ if TYPE_CHECKING:
 class VM_API:
     def __init__( self, context ) -> None:
         self.context    : 'VMWareManager' = context
+        self.config     = self.context.config
 
         self.vm_dict = {}
-        self.CONFIG_FILE = self.resource_path("config.json")
         self.VMS_FILE = self.resource_path("vms.json")
-
-        self.vmrun = ""
-        self.open_vmware_onstart = False
-        
-        self.load_config()
 
     def resource_path( self, filename ):
         """Get path to resource, works for dev and PyInstaller exe"""
@@ -30,20 +25,10 @@ class VM_API:
             base_path = os.path.abspath(".")
         return os.path.join(base_path, filename)
 
-    def load_config( self ):
-        if not os.path.exists( self.CONFIG_FILE ):
-            return {}
-
-        with open( self.CONFIG_FILE, "r" ) as f:
-            data = json.load(f)
-
-        self.vmrun = data.get("vmrun", "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe")
-        self.open_vmware_onstart = data.get("open_vmware_onstart", False)
-
     def get_running_vms( self ):
         try:
             result = subprocess.run([
-                self.vmrun, "list"], 
+                self.config.var.vmrun, "list"], 
                 capture_output=True, 
                 text=True,
                 creationflags=0x08000000 # No console
@@ -56,8 +41,28 @@ class VM_API:
             return set(lines[1:])
 
         except Exception as e:
-           print(e)
+           #print(e)
            return False
+
+    def get_ip_address( self, path ):
+        result = subprocess.run(
+            [self.config.var.vmrun, "getGuestIPAddress", path ], 
+            capture_output=True, 
+            text=True,
+            timeout=5,
+            creationflags=0x08000000 # No console
+        )
+
+        output = result.stdout.lower()
+
+        # handle possible response errors
+        if "vmware tools" in output and "not running" in output:
+            return "vmware tools missing"
+        
+        if "not powered on" in output:
+            return "x"
+
+        return result.stdout.strip()
 
     def load_inventory_vms( self ):
         """Try to load the inventory from VMmware"""
@@ -148,10 +153,10 @@ class VM_API:
 
     def start_vm( self, path ):
         try:
-            run_cmd = [self.vmrun, "start", path]
+            run_cmd = [self.config.var.vmrun, "start", path]
 
             # open vmware when start is pressed
-            if not self.open_vmware_onstart:
+            if not self.config.var.open_vmware_onstart:
                 run_cmd.append("nogui")
 
             result = subprocess.run(
@@ -173,7 +178,7 @@ class VM_API:
 
     def stop_vm_subprocesses( self, path : str, method : str ):
         return subprocess.run(
-                [self.vmrun, "stop", path, method ], 
+                [self.config.var.vmrun, "stop", path, method ], 
                 capture_output=True, 
                 text=True,
                 timeout=15,

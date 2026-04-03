@@ -14,6 +14,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Mona+Sans:ital,wght@0,200..900;1,200..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
 </head>
 <body>
     <div class="backgorund" aria-hidden="true">
@@ -33,6 +35,7 @@
                     <tr>
                         <th scope="col">VM Name</th>
                         <th scope="col" width="150">Status</th>
+                        <th scope="col" width="150">IP Adres</th>
                         <th scope="col" width="200">Acties</th>
                     </tr>
                 </thead>
@@ -62,6 +65,8 @@
     </footer>
 
     <script>
+        window.APP_CONFIG = {{ config | tojson }};
+        
         const fetch_vms_interval = 3000;
         const add_vm_path = document.getElementById('add_vm_path');
         const add_vm_button = document.getElementById('add_vm_button');
@@ -73,9 +78,7 @@
             status.textContent = msg;
         }
 
-        async function fetch_vms(manual_refresh = false) {
-            const res = await fetch('/vms');
-            const data = await res.json();
+        function render_vms( data ) {
             const vms = data.list;
 
             const table = document.getElementById('vms');
@@ -99,8 +102,13 @@
                     }
                     row.cells[1].textContent = vm.status;
 
+                    // ip address
+                    if (row.cells[2].textContent !== vm.ip_address) {
+                        row.cells[2].textContent = vm.ip_address;
+                    }
+
                     // action button
-                    const btn = row.cells[2].querySelector('button');
+                    const btn = row.cells[3].querySelector('button');
                     if (vm.status === 'aan') {
                         btn.textContent = 'Stop';
                         btn.setAttribute('aria-label', 'Stop VM ' + vm.name);
@@ -128,6 +136,9 @@
                     const td_status = document.createElement('td');
                     td_status.textContent = vm.status;
 
+                    const td_ip_address = document.createElement('td');
+                    td_ip_address.textContent = vm.ip_address;
+
                     const td_actions = document.createElement('td');
                     const btn_start_stop = document.createElement('button');
                     if (vm.status === 'aan') {
@@ -153,6 +164,7 @@
 
                     row.appendChild(td_name);
                     row.appendChild(td_status);
+                    row.appendChild(td_ip_address);
                     row.appendChild(td_actions);
 
                     table.appendChild(row);
@@ -161,6 +173,13 @@
 
             // Remove rows that no longer exist
             Object.values(current_vms).forEach(row => row.remove());
+        }
+
+        async function fetch_vms(manual_refresh = false) {
+            const res = await fetch('/vms');
+            const data = await res.json();
+
+            render_vms( data );
 
             if (manual_refresh)
                 announce("VM lijst is geupdate");
@@ -301,7 +320,30 @@
             setInterval(fetch_vms, fetch_vms_interval);
         }
 
-        fetch_vmsLoop();
+        function connect_socket() {
+            const socket = io();
+
+            socket.on("connect", () => {
+                console.log("Connected to server");
+            });
+
+            socket.on("vms_update", (data) => {
+                render_vms(data);
+            });
+        }
+
+        (function () {
+            const config = window.APP_CONFIG || {};
+            //console.log(config);
+
+            // use flask socketio
+            if ( config.http_use_socketio ?? false )
+                connect_socket();
+
+            // use polling
+            else
+                fetch_vmsLoop();
+        })();
     </script>
 </body>
 </html>
