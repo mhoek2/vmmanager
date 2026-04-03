@@ -337,12 +337,16 @@
             //console.log(config);
 
             // use flask socketio
-            if ( config.http_use_socketio ?? false )
+            if ( config.http_use_socketio ?? false ) {
+                fetch_vms();  // fetch once
+
                 connect_socket();
+            }
 
             // use polling
-            else
+            else {
                 fetch_vmsLoop();
+            }
         })();
     </script>
 </body>
