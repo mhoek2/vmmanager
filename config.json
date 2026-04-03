@@ -1,4 +1,6 @@
 {
+  "http_port": 5000,
+  "simulate": true,
   "vmrun": "C:\\Program Files (x86)\\VMware\\VMware Workstation\\vmrun.exe",
   "open_vmware_onstart": false
 }

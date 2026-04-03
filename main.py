@@ -6,14 +6,14 @@ import random
 from flask import Flask, jsonify, request, render_template
 from flask_socketio import SocketIO, emit
 
+from modules.configuration import Configuration
 from modules.vmapi import VM_API
 from modules.tray import Tray
 
 class VMWareManager:
     def __init__( self ) -> None:
         # configurationn
-        self.simulate = False
-        self.http_port = 5000
+        self.config : Configuration = Configuration( self )
 
         # flask instance
         self.app = Flask(__name__)
@@ -66,7 +66,7 @@ class VMWareManager:
             data['list'].append({"name": name, "status": status, "ip_address": ip_address})
             
         # simulate telemetry data
-        if self.simulate:
+        if self.config.var.simulate:
             statuses = ["aan", "gestopt", "fout"]
 
             for i in range(4):
@@ -218,12 +218,12 @@ class VMWareManager:
 
     # server
     def run_flask( self ):
-        print( f"Webserver starting on port {self.http_port}" )
-        self.app.run( port = self.http_port )        
+        print( f"Webserver starting on port {self.config.var.http_port}" )
+        self.app.run( port = self.config.var.http_port )        
 
     def is_flask_running( self ):
         try:
-            with socket.create_connection(("127.0.0.1", self.http_port), timeout=2):
+            with socket.create_connection(("127.0.0.1", self.config.var.http_port), timeout=2):
                 return True
         except OSError:
             return False
@@ -231,7 +231,7 @@ class VMWareManager:
     def open_browser( self ):
         import webbrowser
 
-        webbrowser.open(f"http://localhost:{self.http_port}")
+        webbrowser.open(f"http://localhost:{self.config.var.http_port}")
 
     def open_browser_when_flask_active( self ):
         while not self.is_flask_running():
@@ -242,7 +242,7 @@ class VMWareManager:
     def run( self ) -> None: 
         """Start flask and open in a browser, if flask is already running, only open the browser"""
         if self.is_flask_running():
-            print(f"Already listening on port {self.http_port}, open browser only")
+            print(f"Already listening on port {self.config.var.http_port}, open browser only")
             self.open_browser()
             return
 
@@ -261,7 +261,7 @@ class VMWareManager:
 
         self.socketio.run(
             self.app, 
-            port=self.http_port, 
+            port=self.config.var.http_port, 
             host="127.0.0.1",           # allow 'unsafe' for local tray app
             allow_unsafe_werkzeug=True
         )
@@ -269,4 +269,4 @@ class VMWareManager:
 if __name__ == "__main__":
     manager = VMWareManager()
     manager.run()
-
+    
