@@ -55,9 +55,13 @@ class VM_API:
 
         output = result.stdout.lower()
 
+        # handle possible response errors
         if "vmware tools" in output and "not running" in output:
             return "vmware tools missing"
         
+        if "not powered on" in output:
+            return "x"
+
         return result.stdout.strip()
 
     def load_inventory_vms( self ):
